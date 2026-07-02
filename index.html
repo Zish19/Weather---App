@@ -1,90 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Weather App</title>
+    <title>Premium Weather App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="card">
     <div class="search">
-        <input type="text" placeholder="enter city name" spellcheck="false">
-        <button><img src="images/weather-app-img/images/search.png"></button>
+        <input type="text" placeholder="Enter city name" spellcheck="false">
+        <button><img src="images/weather-app-img/images/search.png" alt="search"></button>
     </div>
-    <div class="error">BSDK city name to correct daal.</div>
+    <div class="error">City not found. Please try again.</div>
     <div class="weather">
-        <img src="images/weather-app-img/images/rain.png" class="weather-icon">
-        <h1 class="temp">22°C</h1>
-        <h2 class="city">Delhi</h2>
+        <div class="datetime-display">
+            <div id="time">00:00</div>
+            <div id="date">Monday, 1 Jan</div>
+        </div>
+        <img src="images/weather-app-img/images/rain.png" class="weather-icon" alt="weather">
+        <h1 class="temp">--°C</h1>
+        <h2 class="city">Loading...</h2>
         <div class="details">
             <div class="col">
-                <img src="images/weather-app-img/images/humidity.png">
+                <img src="images/weather-app-img/images/humidity.png" alt="humidity">
                 <div>
-                    <p class="humidity">50%</p>
+                    <p class="humidity">--%</p>
                     <p>Humidity</p>
                 </div>
             </div>
             <div class="col">
-                <img src="images/weather-app-img/images/wind.png">
+                <img src="images/weather-app-img/images/wind.png" alt="wind">
                 <div>
-                    <p class="wind">15km/h</p>
+                    <p class="wind">--km/h</p>
                     <p>Wind Speed</p>
                 </div>
             </div>
         </div>
     </div>
-
 </div>    
-    
 
 <script>
     const apiKey = "6980402024de2d9b5ec16762ed9e8301";
-    const apiUrl = "https://api.openweathermap.org/data/2.5/weather?units=metric&q=";
+    const apiUrl = "https://api.openweathermap.org/data/2.5/weather?units=metric";
     const weatherIcon = document.querySelector(".weather-icon");
-    const searchBox = document.querySelector(".search input")
-    const searchBtn = document.querySelector(".search button")
+    const searchBox = document.querySelector(".search input");
+    const searchBtn = document.querySelector(".search button");
+    const errorDisplay = document.querySelector(".error");
+    const weatherDisplay = document.querySelector(".weather");
 
-    async function checkWeather(city) {
-        const response = await fetch(apiUrl + city + `&appid=${apiKey}`);
+    // Live Time and Date
+    function updateTime() {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const dateStr = now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' });
+        document.getElementById("time").innerText = timeStr;
+        document.getElementById("date").innerText = dateStr;
+    }
+    setInterval(updateTime, 1000);
+    updateTime();
 
-        if(response.status == 404){
-            document.querySelector(".error").style.display = "block";
-            document.querySelector(".weather").style.display = "none";
-        }else{
-            var data = await response.json();
-
+    function updateWeatherUI(data) {
         document.querySelector(".city").innerHTML = data.name;
         document.querySelector(".temp").innerHTML = Math.round(data.main.temp) + "°C";
         document.querySelector(".humidity").innerHTML = data.main.humidity + "%";
-        document.querySelector(".wind").innerHTML = data.wind.speed + "km/h";
+        document.querySelector(".wind").innerHTML = data.wind.speed + " km/h";
 
-        if(data.weather[0].main == "Clouds"){
+        const mainWeather = data.weather[0].main;
+        if(mainWeather == "Clouds"){
             weatherIcon.src = "images/weather-app-img/images/clouds.png";
-        }else if(data.weather[0].main == "Clear"){
+        } else if(mainWeather == "Clear"){
             weatherIcon.src = "images/weather-app-img/images/clear.png";
-        }
-        else if(data.weather[0].main == "Rain"){
+        } else if(mainWeather == "Rain"){
             weatherIcon.src = "images/weather-app-img/images/rain.png";
-        }
-        else if(data.weather[0].main == "Drizzle"){
+        } else if(mainWeather == "Drizzle"){
             weatherIcon.src = "images/weather-app-img/images/drizzle.png";
-        }else if(data.weather[0].main == "Mist"){
+        } else if(mainWeather == "Mist" || mainWeather == "Haze" || mainWeather == "Fog"){
             weatherIcon.src = "images/weather-app-img/images/mist.png";
+        } else if (mainWeather == "Snow") {
+            weatherIcon.src = "images/weather-app-img/images/snow.png";
+        } else {
+            weatherIcon.src = "images/weather-app-img/images/clouds.png"; // fallback
         }
 
-        document.querySelector(".weather").style.display = "block";
-        if(response.status == 404){
-            document.querySelector(".error").style.display = "block";
-
-        }
-        
+        weatherDisplay.classList.add("active");
+        weatherDisplay.style.display = "block";
+        errorDisplay.style.display = "none";
     }
-}
+
+    async function checkWeatherByCity(city) {
+        try {
+            const response = await fetch(`${apiUrl}&q=${city}&appid=${apiKey}`);
+            if(response.status == 404){
+                errorDisplay.style.display = "block";
+                weatherDisplay.style.display = "none";
+                weatherDisplay.classList.remove("active");
+            } else {
+                const data = await response.json();
+                updateWeatherUI(data);
+            }
+        } catch (error) {
+            console.error("Error fetching weather:", error);
+        }
+    }
+
+    async function checkWeatherByCoords(lat, lon) {
+        try {
+            const response = await fetch(`${apiUrl}&lat=${lat}&lon=${lon}&appid=${apiKey}`);
+            if(response.ok) {
+                const data = await response.json();
+                updateWeatherUI(data);
+            }
+        } catch (error) {
+            console.error("Error fetching weather:", error);
+        }
+    }
+
     searchBtn.addEventListener("click", ()=>{
-        checkWeather(searchBox.value);
-    })
-    checkWeather();
+        if (searchBox.value.trim() !== "") {
+            checkWeatherByCity(searchBox.value);
+        }
+    });
+
+    searchBox.addEventListener("keypress", (e)=>{
+        if (e.key === "Enter" && searchBox.value.trim() !== "") {
+            checkWeatherByCity(searchBox.value);
+        }
+    });
+
+    // On Load: Try to get user location, fallback to default city
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                checkWeatherByCoords(position.coords.latitude, position.coords.longitude);
+            },
+            (error) => {
+                checkWeatherByCity("Delhi");
+            }
+        );
+    } else {
+        checkWeatherByCity("Delhi");
+    }
 </script>
 
 </body>
